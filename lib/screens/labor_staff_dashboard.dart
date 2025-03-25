@@ -406,7 +406,7 @@ class _LaborStaffDashboardState extends State<LaborStaffDashboard> {
               color: AppColors.primaryColor.withOpacity(0.1),
               borderRadius: BorderRadius.circular(20),
             ),
-            child: Text(
+            child: const Text(
               'Labor Staff',
               style: TextStyle(
                 color: AppColors.primaryColor,
@@ -497,7 +497,7 @@ class _LaborStaffDashboardState extends State<LaborStaffDashboard> {
             children: [
               Text(
                 title,
-                style: TextStyle(
+                style: const TextStyle(
                   color: Colors.grey,
                   fontSize: 14,
                 ),

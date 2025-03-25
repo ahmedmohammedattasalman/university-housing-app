@@ -235,7 +235,7 @@ class _EvictionRequestScreenState extends State<EvictionRequestScreen>
   }
 
   Future<void> _executeEviction(EvictionRequestModel request) async {
-    final TextEditingController _confirmationController =
+    final TextEditingController confirmationController =
         TextEditingController();
     bool confirm = false;
 
@@ -253,7 +253,7 @@ class _EvictionRequestScreenState extends State<EvictionRequestScreen>
             ),
             const SizedBox(height: 16),
             TextField(
-              controller: _confirmationController,
+              controller: confirmationController,
               decoration: const InputDecoration(
                 labelText: 'Type CONFIRM',
                 border: OutlineInputBorder(),
@@ -325,12 +325,12 @@ class _EvictionRequestScreenState extends State<EvictionRequestScreen>
       }
     });
 
-    _confirmationController.dispose();
+    confirmationController.dispose();
   }
 
   Future<void> _showFeedbackDialog(
       String requestId, EvictionRequestStatus newStatus) async {
-    final TextEditingController _feedbackController = TextEditingController();
+    final TextEditingController feedbackController = TextEditingController();
 
     await showDialog(
       context: context,
@@ -346,7 +346,7 @@ class _EvictionRequestScreenState extends State<EvictionRequestScreen>
             ),
             const SizedBox(height: 16),
             TextField(
-              controller: _feedbackController,
+              controller: feedbackController,
               decoration: const InputDecoration(
                 labelText: 'Feedback',
                 border: OutlineInputBorder(),
@@ -362,8 +362,8 @@ class _EvictionRequestScreenState extends State<EvictionRequestScreen>
           ),
           TextButton(
             onPressed: () {
-              if (_feedbackController.text.isNotEmpty) {
-                Navigator.pop(context, _feedbackController.text);
+              if (feedbackController.text.isNotEmpty) {
+                Navigator.pop(context, feedbackController.text);
               } else {
                 Fluttertoast.showToast(
                   msg: 'Please provide feedback',
@@ -384,7 +384,7 @@ class _EvictionRequestScreenState extends State<EvictionRequestScreen>
       }
     });
 
-    _feedbackController.dispose();
+    feedbackController.dispose();
   }
 
   @override

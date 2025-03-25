@@ -34,7 +34,7 @@ class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
       appBar: AppBar(
         title: const Text('Student Housing'),
         actions: [
-          RoleIndicator(role: 'student'),
+          const RoleIndicator(role: 'student'),
           IconButton(
             icon: const Icon(Icons.logout),
             onPressed: () {

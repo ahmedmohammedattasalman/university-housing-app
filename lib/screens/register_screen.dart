@@ -1,11 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:universityhousing/constants/colors.dart';
-import 'package:universityhousing/models/user_model.dart';
 import 'package:universityhousing/providers/auth_provider.dart';
-import 'package:universityhousing/providers/theme_provider.dart';
 import 'package:universityhousing/screens/student_dashboard.dart';
-import 'package:universityhousing/screens/login_screen.dart';
 import 'package:universityhousing/widgets/custom_button.dart';
 import 'package:universityhousing/widgets/custom_text_field.dart';
 import 'package:fluttertoast/fluttertoast.dart';

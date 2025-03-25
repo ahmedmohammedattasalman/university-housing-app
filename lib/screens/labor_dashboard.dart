@@ -110,7 +110,7 @@ class _LaborDashboardState extends State<LaborDashboard> {
   }
 
   Widget _buildDashboard() {
-    return Center(
+    return const Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
@@ -119,13 +119,13 @@ class _LaborDashboardState extends State<LaborDashboard> {
             size: 80,
             color: AppColors.primaryColor,
           ),
-          const SizedBox(height: 16),
-          const Text(
+          SizedBox(height: 16),
+          Text(
             'Labor Dashboard',
             style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
           ),
-          const SizedBox(height: 24),
-          const Text(
+          SizedBox(height: 24),
+          Text(
             'Welcome to the labor staff dashboard. Use the navigation bar below to access different sections.',
             textAlign: TextAlign.center,
             style: TextStyle(fontSize: 16),

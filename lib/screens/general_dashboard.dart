@@ -54,7 +54,7 @@ class GeneralDashboard extends StatelessWidget {
                           backgroundColor:
                               AppColors.primaryColor.withOpacity(0.2),
                           radius: 25,
-                          child: Icon(
+                          child: const Icon(
                             Icons.person,
                             color: AppColors.primaryColor,
                             size: 30,

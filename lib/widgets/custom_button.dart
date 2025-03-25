@@ -39,7 +39,7 @@ class CustomButton extends StatelessWidget {
           elevation: 2,
         ),
         child: isLoading
-            ? LoadingIndicator(
+            ? const LoadingIndicator(
                 size: 24,
                 color: Colors.white,
               )

@@ -92,7 +92,7 @@ class _TestConnectionScreenState extends State<TestConnectionScreen> {
           mainAxisAlignment: MainAxisAlignment.center,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Icon(
+            const Icon(
               Icons.storage,
               size: 80,
               color: AppColors.primaryColor,

@@ -27,32 +27,51 @@ class SupabaseService {
     );
 
     if (authResponse.user != null) {
-      // Insert the user data into the users table
-      await supabase.from('users').insert({
-        'id': authResponse.user!.id,
-        'email': email,
-        'user_role': userRole,
-        'first_name': firstName,
-        'last_name': lastName,
-        'phone_number': phoneNumber,
-        'is_active': true,
-      });
+      try {
+        // Insert the user data into the users table
+        await supabase.from('users').insert({
+          'id': authResponse.user!.id,
+          'email': email,
+          'user_role': userRole,
+          'first_name': firstName,
+          'last_name': lastName,
+          'phone_number': phoneNumber,
+          'is_active': true,
+        });
 
-      // If user is a student, create student profile
-      if (userRole == 'student' && studentId != null) {
-        try {
-          await supabase.from('student_profiles').insert({
-            'user_id': authResponse.user!.id,
-            'student_id': studentId,
-            'enrollment_date': DateTime.now().toIso8601String(),
-            'academic_year': DateTime.now().year.toString(),
-            'outstanding_balance': 0.0,
-            'check_in_date': DateTime.now().toIso8601String(),
-          });
-        } catch (e) {
-          // Log the error but don't fail registration
-          print('Failed to create student profile: $e');
+        print('User record created successfully');
+
+        // If user is a student, create student profile
+        if (userRole == 'student' && studentId != null) {
+          try {
+            await supabase.from('student_profiles').insert({
+              'user_id': authResponse.user!.id,
+              'student_id': studentId,
+              'enrollment_date': DateTime.now().toIso8601String(),
+              'academic_year': DateTime.now().year.toString(),
+              'outstanding_balance': 0.0,
+              'check_in_date': DateTime.now().toIso8601String(),
+            });
+            print('Student profile created successfully');
+          } catch (e) {
+            // Log the error but don't fail registration
+            print('Failed to create student profile: $e');
+          }
         }
+
+        // Create role-specific permissions using direct SQL to bypass RLS
+        try {
+          // Use a more direct approach to avoid any recursion issues
+          await _createUserPermissionsBasedOnRole(
+              authResponse.user!.id, userRole);
+          print('User permissions created successfully');
+        } catch (e) {
+          print('Error setting up permissions: $e');
+          // Continue with registration even if permissions setup fails
+        }
+      } catch (e) {
+        print('Error during user registration: $e');
+        // Return the auth response anyway, so user can log in
       }
     }
 
@@ -65,27 +84,110 @@ class SupabaseService {
 
   // User profile methods
   Future<Map<String, dynamic>?> getCurrentUserProfile() async {
-    final user = supabase.auth.currentUser;
-    if (user == null) return null;
+    try {
+      final user = supabase.auth.currentUser;
+      if (user == null) {
+        print('No authenticated user found');
+        return null;
+      }
 
-    return await getUserProfileById(user.id);
+      // Try direct approach first
+      try {
+        final userData = await supabase
+            .from('users')
+            .select()
+            .eq('id', user.id)
+            .maybeSingle();
+
+        if (userData != null) {
+          // Add debug info
+          print('Successfully retrieved user profile for user ID: ${user.id}');
+          return userData;
+        }
+      } catch (directError) {
+        print('Error with direct user profile retrieval: $directError');
+      }
+
+      // Fall back to getUserProfileById
+      return await getUserProfileById(user.id);
+    } catch (e) {
+      print('Error in getCurrentUserProfile: $e');
+      return null;
+    }
   }
 
   Future<Map<String, dynamic>?> getUserProfileById(String userId) async {
     try {
-      final userData =
-          await supabase.from('users').select().eq('id', userId).single();
+      // Try to get user profile using a direct RPC function that bypasses RLS
+      try {
+        final result =
+            await supabase.rpc('get_user_by_id', params: {'user_id': userId});
 
-      // Check if user role is missing and set a default
-      if (userData != null &&
-          (userData['user_role'] == null ||
-              userData['user_role'].toString().isEmpty)) {
-        await setDefaultUserRole(userId);
-        // Fetch the updated profile after setting default role
-        return await supabase.from('users').select().eq('id', userId).single();
+        if (result != null && result.isNotEmpty) {
+          print('Successfully retrieved user by ID through function: $userId');
+          final userData = result[0];
+
+          // Check if user role is missing and set a default
+          if (userData['user_role'] == null ||
+              userData['user_role'].toString().isEmpty) {
+            await setDefaultUserRole(userId);
+            // Try again using the same function
+            final updatedResult = await supabase
+                .rpc('get_user_by_id', params: {'user_id': userId});
+            if (updatedResult != null && updatedResult.isNotEmpty) {
+              return updatedResult[0];
+            }
+          }
+
+          return userData;
+        }
+      } catch (rpcError) {
+        print(
+            'Error using RPC function: $rpcError - falling back to standard query');
       }
 
-      return userData;
+      // Try standard query if RPC fails
+      try {
+        final userData = await supabase
+            .from('users')
+            .select()
+            .eq('id', userId)
+            .maybeSingle();
+
+        if (userData != null) {
+          // Check if user role is missing and set a default
+          if (userData['user_role'] == null ||
+              userData['user_role'].toString().isEmpty) {
+            await setDefaultUserRole(userId);
+            // Try again to get the updated profile
+            return await supabase
+                .from('users')
+                .select()
+                .eq('id', userId)
+                .maybeSingle();
+          }
+          return userData;
+        }
+      } catch (profileError) {
+        print(
+            'Error fetching from users table: $profileError - falling back to alternative method');
+      }
+
+      // Fallback approach: Get the current authenticated user if it matches
+      final currentUser = supabase.auth.currentUser;
+      if (currentUser != null && currentUser.id == userId) {
+        // Create a minimal profile from the auth user
+        return {
+          'id': currentUser.id,
+          'email': currentUser.email,
+          'user_role': 'general', // Default role
+          'first_name': currentUser.userMetadata?['first_name'] ?? '',
+          'last_name': currentUser.userMetadata?['last_name'] ?? '',
+        };
+      }
+
+      print('Could not retrieve user profile by ID: $userId');
+      return null;
     } catch (e) {
       print('Error fetching user profile: $e');
       return null;
@@ -225,6 +327,8 @@ class SupabaseService {
   // Add a function to set default user role if missing
   Future<void> setDefaultUserRole(String userId) async {
     try {
+      print('Setting default user role for user ID: $userId');
+
       // Check if user exists in student_profiles
       final studentProfile = await supabase
           .from('student_profiles')
@@ -238,46 +342,108 @@ class SupabaseService {
         defaultRole = 'general';
       }
 
+      print('Determined default role: $defaultRole for user: $userId');
+
       // Update the user record with the default role
       await supabase.from('users').update({
         'user_role': defaultRole,
       }).eq('id', userId);
 
-      print('Set default user role: $defaultRole for user: $userId');
+      print(
+          'Default user role set successfully to: $defaultRole for user: $userId');
     } catch (e) {
       print('Error setting default user role: $e');
+      // Don't throw an exception here to avoid breaking the app flow
     }
   }
 
   // Update user role
   Future<void> updateUserRole(String userId, String role) async {
-    // Validate role
-    final validRoles = ['student', 'admin', 'supervisor', 'labor', 'general'];
-    if (!validRoles.contains(role)) {
-      throw Exception('Invalid role: $role. Must be one of $validRoles');
-    }
-
-    // Update the user record
-    await supabase.from('users').update({
-      'user_role': role,
-    }).eq('id', userId);
-
-    // If updating to student role, check if student profile exists
-    if (role == 'student') {
-      final studentProfile = await supabase
-          .from('student_profiles')
-          .select('id')
-          .eq('user_id', userId);
-
-      // If no student profile exists, create one
-      if (studentProfile == null || studentProfile.isEmpty) {
-        await supabase.from('student_profiles').insert({
-          'user_id': userId,
-          'enrollment_date': DateTime.now().toIso8601String(),
-          'academic_year': DateTime.now().year.toString(),
-          'outstanding_balance': 0.0,
-        });
+    try {
+      // Validate role
+      final validRoles = ['student', 'admin', 'supervisor', 'labor', 'general'];
+      if (!validRoles.contains(role)) {
+        throw Exception('Invalid role: $role. Must be one of $validRoles');
       }
+
+      print('Updating user role for user ID: $userId to role: $role');
+
+      // First try with standard approach
+      try {
+        await supabase.from('users').update({
+          'user_role': role,
+        }).eq('id', userId);
+
+        print(
+            'User role successfully updated to: $role using standard approach');
+      } catch (updateError) {
+        print('Error using standard update: $updateError - trying alternative');
+
+        // Try with direct SQL via RPC if available
+        try {
+          await supabase.rpc('update_user_role',
+              params: {'user_id': userId, 'new_role': role});
+          print('User role successfully updated to: $role using RPC function');
+        } catch (rpcError) {
+          print('RPC function also failed: $rpcError');
+          throw Exception('Failed to update role after multiple attempts');
+        }
+      }
+
+      // If updating to student role, check if student profile exists
+      if (role == 'student') {
+        final studentProfile = await supabase
+            .from('student_profiles')
+            .select('id')
+            .eq('user_id', userId);
+
+        // If no student profile exists, create one
+        if (studentProfile == null || studentProfile.isEmpty) {
+          print('No student profile found, creating one for user ID: $userId');
+          try {
+            await supabase.from('student_profiles').insert({
+              'user_id': userId,
+              'enrollment_date': DateTime.now().toIso8601String(),
+              'academic_year': DateTime.now().year.toString(),
+              'outstanding_balance': 0.0,
+            });
+            print('Student profile created successfully');
+          } catch (profileError) {
+            print('Error creating student profile: $profileError');
+            // Don't throw here to avoid breaking the flow if just the profile creation fails
+          }
+        }
+      }
+
+      // Update role-based permissions
+      await _updateRolePermissions(userId, role);
+    } catch (e) {
+      print('Error updating user role: $e');
+      throw Exception('Failed to update user role: $e');
+    }
+  }
+
+  // Update user permissions when role changes
+  Future<void> _updateRolePermissions(String userId, String role) async {
+    try {
+      print('Updating permissions for user ID: $userId with new role: $role');
+
+      // Use the database function directly to handle everything in one call
+      try {
+        await supabase.rpc('create_user_permissions',
+            params: {'p_user_id': userId, 'p_role': role});
+        print(
+            'Successfully updated permissions for user with role: $role using database function');
+        return;
+      } catch (rpcError) {
+        print(
+            'Error using RPC function: $rpcError - falling back to regular method');
+        // Fall back to regular method if RPC fails
+        await _createUserPermissionsBasedOnRole(userId, role);
+      }
+    } catch (e) {
+      print('Error updating role permissions: $e');
+      // Don't throw to avoid breaking role update flow
     }
   }
 
@@ -871,6 +1037,126 @@ class SupabaseService {
     } catch (e) {
       print('Error updating user profile: $e');
       throw Exception('Failed to update user profile: $e');
+    }
+  }
+
+  // Setup role-based access permissions
+  Future<void> _setupRoleBasedAccess(String userId, String role) async {
+    await _createUserPermissionsBasedOnRole(userId, role);
+  }
+
+  // Public method to set up role-based access
+  Future<void> setupRoleBasedAccess(String userId, String role) async {
+    await _createUserPermissionsBasedOnRole(userId, role);
+  }
+
+  // A safer method to create user permissions without triggering RLS recursion
+  Future<void> _createUserPermissionsBasedOnRole(
+      String userId, String role) async {
+    try {
+      print(
+          'Setting up role-based access for user ID: $userId with role: $role');
+
+      // First try using the database function that bypasses RLS
+      try {
+        await supabase.rpc('create_user_permissions',
+            params: {'p_user_id': userId, 'p_role': role});
+        print(
+            'Successfully set up permissions for user with role: $role using database function');
+        return;
+      } catch (rpcError) {
+        print(
+            'Error using RPC function: $rpcError - falling back to direct insert');
+      }
+
+      // Fallback: Create base permissions object
+      final Map<String, dynamic> permissions = {
+        'user_id': userId,
+        'can_view_announcements': true, // Default for all users
+      };
+
+      // Add role-specific permissions
+      switch (role) {
+        case 'student':
+          permissions.addAll({
+            'can_view_housing': true,
+            'can_request_housing': true,
+            'can_view_attendance': true,
+            'can_view_payments': true,
+            'can_make_payments': true,
+            'can_request_maintenance': true,
+          });
+          break;
+
+        case 'admin':
+          permissions.addAll({
+            'can_view_housing': true,
+            'can_manage_housing': true,
+            'can_assign_housing': true,
+            'can_view_attendance': true,
+            'can_record_attendance': true,
+            'can_view_payments': true,
+            'can_process_payments': true,
+            'can_manage_users': true,
+            'can_view_reports': true,
+            'can_manage_maintenance': true,
+            'can_post_announcements': true,
+            'is_admin': true,
+          });
+          break;
+
+        case 'supervisor':
+          permissions.addAll({
+            'can_view_housing': true,
+            'can_assign_housing': true,
+            'can_view_attendance': true,
+            'can_record_attendance': true,
+            'can_view_payments': true,
+            'can_view_reports': true,
+            'can_manage_maintenance': true,
+            'can_post_announcements': true,
+          });
+          break;
+
+        case 'labor':
+          permissions.addAll({
+            'can_view_housing': true,
+            'can_view_maintenance': true,
+            'can_perform_maintenance': true,
+            'can_update_maintenance': true,
+          });
+          break;
+
+        case 'general':
+          permissions.addAll({
+            'can_request_housing': true,
+          });
+          break;
+      }
+
+      // Use direct insert as a last resort
+      try {
+        // First delete any existing permissions to avoid conflicts
+        try {
+          await supabase
+              .from('user_permissions')
+              .delete()
+              .eq('user_id', userId);
+        } catch (deleteError) {
+          print(
+              'Error deleting existing permissions: $deleteError - may be none existing');
+        }
+
+        // Now insert new permissions
+        await supabase.from('user_permissions').insert(permissions);
+        print(
+            'Successfully set up permissions for user with role: $role using direct insert');
+      } catch (insertError) {
+        print('Error inserting permissions: $insertError');
+      }
+    } catch (e) {
+      print('Error in _createUserPermissionsBasedOnRole: $e');
+      // Don't throw to avoid breaking registration flow
     }
   }
 }

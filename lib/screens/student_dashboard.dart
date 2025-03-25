@@ -144,7 +144,7 @@ class _StudentDashboardState extends State<StudentDashboard> {
                         radius: 30,
                         backgroundColor:
                             AppColors.primaryColor.withOpacity(0.2),
-                        child: Icon(
+                        child: const Icon(
                           Icons.person,
                           size: 30,
                           color: AppColors.primaryColor,
@@ -185,64 +185,67 @@ class _StudentDashboardState extends State<StudentDashboard> {
                   ),
                   const Divider(height: 24),
                   // Balance information
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Outstanding Balance',
-                            style: TextStyle(
-                              color: Colors.grey[600],
-                              fontSize: 14,
+                  if (authProvider.canViewPayments)
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Outstanding Balance',
+                              style: TextStyle(
+                                color: Colors.grey[600],
+                                fontSize: 14,
+                              ),
                             ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            currencyFormat
-                                .format(authProvider.outstandingBalance),
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 20,
-                              color: authProvider.outstandingBalance > 0
-                                  ? AppColors.errorColor
-                                  : AppColors.successColor,
+                            const SizedBox(height: 4),
+                            Text(
+                              currencyFormat
+                                  .format(authProvider.outstandingBalance),
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 20,
+                                color: authProvider.outstandingBalance > 0
+                                    ? Colors.red
+                                    : Colors.green,
+                              ),
                             ),
-                          ),
-                        ],
-                      ),
-                      ElevatedButton(
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const PaymentScreen(),
-                            ),
-                          );
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.primaryColor,
-                          foregroundColor: Colors.white,
+                          ],
                         ),
-                        child: const Text('Make Payment'),
-                      ),
-                    ],
-                  ),
+                        if (authProvider.canMakePayments)
+                          ElevatedButton(
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => const PaymentScreen(),
+                                ),
+                              );
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.primaryColor,
+                              foregroundColor: Colors.white,
+                            ),
+                            child: const Text('Make Payment'),
+                          ),
+                      ],
+                    ),
                 ],
               ),
             ),
           ),
           const SizedBox(height: 24),
-          const Text(
-            'Services',
+          Text(
+            'Quick Actions',
             style: TextStyle(
-              fontSize: 20,
+              fontSize: 18,
               fontWeight: FontWeight.bold,
+              color: Theme.of(context).colorScheme.primary,
             ),
           ),
           const SizedBox(height: 16),
-          // Service grid
+          // Quick Actions Grid
           GridView.count(
             crossAxisCount: 2,
             shrinkWrap: true,
@@ -250,130 +253,70 @@ class _StudentDashboardState extends State<StudentDashboard> {
             mainAxisSpacing: 16,
             crossAxisSpacing: 16,
             children: [
-              DashboardCard(
-                title: 'Attendance',
-                icon: Icons.qr_code_scanner,
-                color: AppColors.primaryColor,
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const QrAttendanceScreen(),
-                    ),
-                  );
-                },
-              ),
-              DashboardCard(
-                title: 'Vacation Request',
-                icon: Icons.beach_access,
-                color: AppColors.secondaryColor,
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const VacationRequestScreen(),
-                    ),
-                  );
-                },
-              ),
-              DashboardCard(
-                title: 'Move Out Request',
-                icon: Icons.exit_to_app,
-                color: AppColors.warningColor,
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const EvictionRequestScreen(),
-                    ),
-                  );
-                },
-              ),
-              DashboardCard(
-                title: 'Payments',
-                icon: Icons.payment,
-                color: AppColors.accentColor,
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const PaymentScreen(),
-                    ),
-                  );
-                },
-              ),
-              DashboardCard(
-                title: 'Maintenance',
-                icon: Icons.build,
-                color: Colors.amber,
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const MaintenanceRequestScreen(),
-                    ),
-                  );
-                },
-              ),
-            ],
-          ),
-          const SizedBox(height: 24),
-          const Text(
-            'Recent Activities',
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 16),
-          // Activity list would be populated from database
-          Card(
-            elevation: 2,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: ListView.separated(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: 3, // Show dummy data for now
-              separatorBuilder: (context, index) => const Divider(height: 1),
-              itemBuilder: (context, index) {
-                // This would be replaced with real data
-                final activityIcons = [
-                  Icons.payment,
-                  Icons.qr_code_scanner,
-                  Icons.beach_access,
-                ];
-
-                final activityTitles = [
-                  'Payment Processed',
-                  'Attendance Recorded',
-                  'Vacation Request Approved',
-                ];
-
-                final activityDates = [
-                  '2 hours ago',
-                  'Yesterday',
-                  '3 days ago',
-                ];
-
-                return ListTile(
-                  leading: CircleAvatar(
-                    backgroundColor: AppColors.primaryColor.withOpacity(0.2),
-                    child: Icon(
-                      activityIcons[index],
-                      color: AppColors.primaryColor,
-                    ),
-                  ),
-                  title: Text(activityTitles[index]),
-                  subtitle: Text(activityDates[index]),
-                  trailing: const Icon(Icons.chevron_right),
+              // QR Attendance
+              if (authProvider.canViewAttendance)
+                DashboardCard(
+                  title: 'Attendance',
+                  icon: Icons.qr_code,
+                  color: Colors.blue,
                   onTap: () {
-                    // View activity details
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const QrAttendanceScreen(),
+                      ),
+                    );
                   },
-                );
-              },
-            ),
+                ),
+
+              // Vacation Request
+              if (authProvider.canRequestHousing)
+                DashboardCard(
+                  title: 'Vacation Request',
+                  icon: Icons.beach_access,
+                  color: Colors.orange,
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const VacationRequestScreen(),
+                      ),
+                    );
+                  },
+                ),
+
+              // Eviction Request
+              if (authProvider.canRequestHousing)
+                DashboardCard(
+                  title: 'Check-out Request',
+                  icon: Icons.exit_to_app,
+                  color: Colors.purple,
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const EvictionRequestScreen(),
+                      ),
+                    );
+                  },
+                ),
+
+              // Maintenance Request
+              if (authProvider.canRequestMaintenance)
+                DashboardCard(
+                  title: 'Maintenance',
+                  icon: Icons.build,
+                  color: Colors.green,
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const MaintenanceRequestScreen(),
+                      ),
+                    );
+                  },
+                ),
+            ],
           ),
         ],
       ),
@@ -420,7 +363,7 @@ class _StudentDashboardState extends State<StudentDashboard> {
               color: AppColors.primaryColor.withOpacity(0.1),
               borderRadius: BorderRadius.circular(20),
             ),
-            child: Text(
+            child: const Text(
               'Student',
               style: TextStyle(
                 color: AppColors.primaryColor,
@@ -478,7 +421,7 @@ class _StudentDashboardState extends State<StudentDashboard> {
             children: [
               Text(
                 title,
-                style: TextStyle(
+                style: const TextStyle(
                   color: Colors.grey,
                   fontSize: 14,
                 ),

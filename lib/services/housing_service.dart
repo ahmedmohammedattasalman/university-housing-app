@@ -1,4 +1,3 @@
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:universityhousing/main.dart';
 import 'package:universityhousing/services/supabase_service.dart';
 import 'package:universityhousing/models/vacation_request_model.dart';
@@ -117,12 +116,14 @@ class HousingService {
     required String attendanceType,
     String? location,
     bool requestMeal = false,
+    bool? isMealRequested,
     String? notes,
+    String? userId,
   }) async {
     await _supabaseService.recordAttendance(
       attendanceType: attendanceType,
       location: location,
-      requestMeal: requestMeal,
+      requestMeal: isMealRequested ?? requestMeal,
       notes: notes,
     );
   }
@@ -135,11 +136,13 @@ class HousingService {
     DateTime? startDate,
     DateTime? endDate,
     String? attendanceType,
+    String? userId,
+    String? filterByType,
   }) async {
     return await _supabaseService.getAttendanceRecords(
       startDate: startDate,
       endDate: endDate,
-      attendanceType: attendanceType,
+      attendanceType: filterByType ?? attendanceType,
     );
   }
 

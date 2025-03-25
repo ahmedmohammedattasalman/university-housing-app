@@ -7,7 +7,6 @@ import 'package:universityhousing/screens/supervisor_dashboard.dart';
 import 'package:universityhousing/screens/labor_dashboard.dart';
 import 'package:universityhousing/screens/general_dashboard.dart';
 import 'package:universityhousing/widgets/loading_indicator.dart';
-import 'package:universityhousing/constants/colors.dart';
 import 'package:universityhousing/widgets/role_indicator.dart';
 
 class DashboardScreen extends StatefulWidget {

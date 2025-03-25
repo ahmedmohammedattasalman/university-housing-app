@@ -1,12 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:universityhousing/providers/auth_provider.dart';
-import 'package:universityhousing/constants/colors.dart';
 import 'package:universityhousing/services/housing_service.dart';
 import 'package:universityhousing/widgets/custom_button.dart';
-import 'package:universityhousing/widgets/custom_text_field.dart';
 import 'package:fluttertoast/fluttertoast.dart';
-import 'package:intl/intl.dart';
 
 class HousingRegistrationScreen extends StatefulWidget {
   const HousingRegistrationScreen({super.key});
@@ -79,7 +76,6 @@ class _HousingRegistrationScreenState extends State<HousingRegistrationScreen> {
       }
 
       await _housingService.submitHousingRegistration(
-        studentId: authProvider.studentId,
         semesterTerm: _selectedSemester,
         academicYear: _selectedAcademicYear,
         roomPreference: _selectedRoomType,

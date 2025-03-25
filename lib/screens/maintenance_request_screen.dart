@@ -53,7 +53,7 @@ class _MaintenanceRequestScreenState extends State<MaintenanceRequestScreen> {
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(
-            colorScheme: ColorScheme.light(
+            colorScheme: const ColorScheme.light(
               primary: AppColors.primaryColor,
             ),
           ),
@@ -152,7 +152,7 @@ class _MaintenanceRequestScreenState extends State<MaintenanceRequestScreen> {
                             radius: 24,
                             backgroundColor:
                                 AppColors.primaryColor.withOpacity(0.2),
-                            child: Icon(
+                            child: const Icon(
                               Icons.location_on,
                               color: AppColors.primaryColor,
                             ),
@@ -297,7 +297,7 @@ class _MaintenanceRequestScreenState extends State<MaintenanceRequestScreen> {
                     ),
                   ),
                   const Spacer(),
-                  Icon(
+                  const Icon(
                     Icons.warning_amber_rounded,
                     color: AppColors.errorColor,
                   ),
@@ -359,8 +359,8 @@ class _MaintenanceRequestScreenState extends State<MaintenanceRequestScreen> {
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
+                child: const Padding(
+                  padding: EdgeInsets.all(16.0),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -370,8 +370,8 @@ class _MaintenanceRequestScreenState extends State<MaintenanceRequestScreen> {
                             Icons.info_outline,
                             color: AppColors.infoColor,
                           ),
-                          const SizedBox(width: 8),
-                          const Text(
+                          SizedBox(width: 8),
+                          Text(
                             'Maintenance Guidelines',
                             style: TextStyle(
                               fontWeight: FontWeight.bold,
@@ -380,18 +380,18 @@ class _MaintenanceRequestScreenState extends State<MaintenanceRequestScreen> {
                           ),
                         ],
                       ),
-                      const SizedBox(height: 8),
-                      const Text(
+                      SizedBox(height: 8),
+                      Text(
                         '• Maintenance staff will contact you before entering your room',
                         style: TextStyle(fontSize: 14),
                       ),
-                      const SizedBox(height: 4),
-                      const Text(
+                      SizedBox(height: 4),
+                      Text(
                         '• Standard requests are typically addressed within 3-5 business days',
                         style: TextStyle(fontSize: 14),
                       ),
-                      const SizedBox(height: 4),
-                      const Text(
+                      SizedBox(height: 4),
+                      Text(
                         '• Urgent requests will be prioritized based on severity',
                         style: TextStyle(fontSize: 14),
                       ),
@@ -434,13 +434,13 @@ class _MaintenanceRequestScreenState extends State<MaintenanceRequestScreen> {
                       onPressed:
                           _isLoading ? null : () => Navigator.pop(context),
                       style: ButtonStyle(
-                        padding: MaterialStateProperty.all(
+                        padding: WidgetStateProperty.all(
                           const EdgeInsets.symmetric(vertical: 16),
                         ),
-                        side: MaterialStateProperty.all(
-                          BorderSide(color: AppColors.primaryColor),
+                        side: WidgetStateProperty.all(
+                          const BorderSide(color: AppColors.primaryColor),
                         ),
-                        shape: MaterialStateProperty.all(
+                        shape: WidgetStateProperty.all(
                           RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
                           ),

@@ -126,7 +126,7 @@ class _QrAttendanceScreenState extends State<QrAttendanceScreen>
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(
+                const Icon(
                   Icons.qr_code_scanner,
                   size: 64,
                   color: AppColors.primaryColor,
@@ -233,7 +233,7 @@ class _QrAttendanceScreenState extends State<QrAttendanceScreen>
                       backgroundColor: AppColors.primaryColor.withOpacity(0.2),
                       child: Text(
                         names[index].substring(0, 1),
-                        style: TextStyle(
+                        style: const TextStyle(
                           color: AppColors.primaryColor,
                           fontWeight: FontWeight.bold,
                         ),
@@ -243,7 +243,7 @@ class _QrAttendanceScreenState extends State<QrAttendanceScreen>
                     subtitle: Text('ID: ${ids[index]}'),
                     trailing: Text(
                       times[index],
-                      style: TextStyle(
+                      style: const TextStyle(
                         color: AppColors.primaryColor,
                         fontWeight: FontWeight.bold,
                       ),

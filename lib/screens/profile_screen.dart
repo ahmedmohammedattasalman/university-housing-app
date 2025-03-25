@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:universityhousing/providers/auth_provider.dart';
 import 'package:universityhousing/widgets/custom_button.dart';
-import 'package:universityhousing/widgets/custom_text_field.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:intl/intl.dart';
 

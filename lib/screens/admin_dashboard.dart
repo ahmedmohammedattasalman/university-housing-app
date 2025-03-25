@@ -131,7 +131,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                   CircleAvatar(
                     radius: 30,
                     backgroundColor: AppColors.primaryColor.withOpacity(0.1),
-                    child: Icon(
+                    child: const Icon(
                       Icons.admin_panel_settings,
                       size: 30,
                       color: AppColors.primaryColor,

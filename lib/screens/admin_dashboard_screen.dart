@@ -61,7 +61,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       appBar: AppBar(
         title: const Text('Housing Administration'),
         actions: [
-          RoleIndicator(role: 'admin'),
+          const RoleIndicator(role: 'admin'),
           IconButton(
             icon: const Icon(Icons.logout),
             onPressed: () {
@@ -78,11 +78,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           children: [
             UserAccountsDrawerHeader(
               accountName: Text(authProvider.user?.email ?? ''),
-              accountEmail: Text('Housing Administrator'),
-              currentAccountPicture: CircleAvatar(
+              accountEmail: const Text('Housing Administrator'),
+              currentAccountPicture: const CircleAvatar(
                 backgroundColor: Colors.white,
-                child:
-                    const Icon(Icons.admin_panel_settings, color: Colors.blue),
+                child: Icon(Icons.admin_panel_settings, color: Colors.blue),
               ),
               decoration: BoxDecoration(
                 color: Theme.of(context).primaryColor,

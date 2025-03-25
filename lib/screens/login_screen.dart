@@ -100,7 +100,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   // Logo or App name
-                  Icon(
+                  const Icon(
                     Icons.apartment,
                     size: 80,
                     color: AppColors.primaryColor,
@@ -284,7 +284,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       onPressed: () {
                         // Navigate to forgot password screen
                       },
-                      child: Text(
+                      child: const Text(
                         'Forgot Password?',
                         style: TextStyle(
                           color: AppColors.secondaryColor,
@@ -302,31 +302,22 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   const SizedBox(height: 16),
 
-                  // Register link - only show for students
-                  if (_selectedUserType == 'student')
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Text("Don't have an account?"),
-                        TextButton(
-                          onPressed: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => const RegisterScreen(),
-                              ),
-                            );
-                          },
-                          child: Text(
-                            'Register',
-                            style: TextStyle(
-                              color: AppColors.secondaryColor,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
+                  // Bottom text with register option
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      // Admin or responsible person link
+                      TextButton(
+                        onPressed: () {
+                          Navigator.pushNamed(context, '/responsible');
+                        },
+                        child: const Text(
+                          'Administrative Access',
+                          style: TextStyle(color: AppColors.primaryColor),
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
+                  ),
                 ],
               ),
             ),

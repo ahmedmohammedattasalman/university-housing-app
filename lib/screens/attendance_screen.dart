@@ -78,8 +78,7 @@ class _AttendanceScreenState extends State<AttendanceScreen>
     try {
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
       final records = await _housingService.getAttendanceRecords(
-        userId: authProvider.user!.id,
-        filterByType: _filterByType != 'All' ? _filterByType : null,
+        attendanceType: _filterByType != 'All' ? _filterByType : null,
       );
 
       if (mounted) {
@@ -112,16 +111,15 @@ class _AttendanceScreenState extends State<AttendanceScreen>
 
       // Call the service to record attendance
       await _housingService.recordAttendance(
-        userId: authProvider.user!.id,
         attendanceType: _selectedAttendanceType,
         location: _selectedLocation,
-        isMealRequested: _isMealRequested,
+        requestMeal: _isMealRequested,
         notes: _notesController.text.isNotEmpty ? _notesController.text : null,
       );
 
       if (mounted) {
         Fluttertoast.showToast(
-          msg: '${_selectedAttendanceType} recorded successfully!',
+          msg: '$_selectedAttendanceType recorded successfully!',
           backgroundColor: Colors.green,
           textColor: Colors.white,
         );

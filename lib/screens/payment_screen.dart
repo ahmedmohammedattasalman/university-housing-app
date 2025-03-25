@@ -575,7 +575,7 @@ class _PaymentScreenState extends State<PaymentScreen>
                 child: ListTile(
                   leading: CircleAvatar(
                     backgroundColor: AppColors.primaryColor.withOpacity(0.1),
-                    child: Icon(
+                    child: const Icon(
                       Icons.receipt,
                       color: AppColors.primaryColor,
                     ),
@@ -601,7 +601,7 @@ class _PaymentScreenState extends State<PaymentScreen>
                     children: [
                       Text(
                         '\$${payment['amount'].toStringAsFixed(2)}',
-                        style: TextStyle(
+                        style: const TextStyle(
                           fontWeight: FontWeight.bold,
                           fontSize: 16,
                           color: AppColors.successColor,
@@ -614,7 +614,7 @@ class _PaymentScreenState extends State<PaymentScreen>
                           color: AppColors.successColor.withOpacity(0.1),
                           borderRadius: BorderRadius.circular(8),
                         ),
-                        child: Text(
+                        child: const Text(
                           'COMPLETED',
                           style: TextStyle(
                             fontSize: 10,
