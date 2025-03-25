@@ -49,7 +49,7 @@ The University Housing Management System streamlines housing operations for stud
 
 1. Clone the repository:
 ```
-git clone https://github.com/yourusername/universityhousing.git
+https://github.com/ahmedmohammedattasalman/university-housing-app.git
 ```
 
 2. Navigate to the project directory:
