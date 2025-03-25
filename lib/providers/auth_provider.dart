@@ -3,12 +3,23 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:universityhousing/services/supabase_service.dart';
 
 class AuthProvider extends ChangeNotifier {
-  final SupabaseService _supabaseService = SupabaseService();
+  final _supabaseService = SupabaseService();
   User? _user;
   Map<String, dynamic>? _userProfile;
   Map<String, dynamic>? _studentProfile;
   bool _isLoading = false;
   String? _error;
+  String _userRole = '';
+  String _firstName = '';
+  String _lastName = '';
+  String _studentId = '';
+  String? _phoneNumber;
+  String? _emergencyContact;
+  String? _emergencyPhone;
+  String _roomNumber = 'Not Assigned';
+  String _housingStatus = 'Pending';
+  double _outstandingBalance = 0.0;
+  DateTime _checkInDate = DateTime.now();
 
   // Getters
   User? get user => _user;
@@ -17,6 +28,18 @@ class AuthProvider extends ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get error => _error;
   bool get isLoggedIn => _user != null;
+  String get userRole => _userRole;
+  String get firstName => _firstName;
+  String get lastName => _lastName;
+  String get studentName => '$_firstName $_lastName';
+  String get studentId => _studentId;
+  String? get phoneNumber => _phoneNumber;
+  String? get emergencyContact => _emergencyContact;
+  String? get emergencyPhone => _emergencyPhone;
+  String get roomNumber => _roomNumber;
+  String get housingStatus => _housingStatus;
+  double get outstandingBalance => _outstandingBalance;
+  DateTime get checkInDate => _checkInDate;
 
   // User role getters
   bool get isStudent =>
@@ -33,11 +56,6 @@ class AuthProvider extends ChangeNotifier {
   // Check if user has a valid recognized role
   bool get hasValidRole =>
       isStudent || isAdmin || isSupervisor || isLabor || isGeneral;
-
-  // Get user's role as string
-  String get userRole => _userProfile != null
-      ? _userProfile!['user_role']?.toString() ?? 'unknown'
-      : 'unknown';
 
   // Constructor - Check if user is already logged in
   AuthProvider() {
@@ -63,6 +81,27 @@ class AuthProvider extends ChangeNotifier {
       // If user is student, load student profile
       if (isStudent) {
         _studentProfile = await _supabaseService.getStudentProfile();
+      }
+
+      if (_userProfile != null) {
+        _userRole = _userProfile!['user_role'] ?? 'student';
+        _firstName = _userProfile!['first_name'] ?? '';
+        _lastName = _userProfile!['last_name'] ?? '';
+        _phoneNumber = _userProfile!['phone_number'];
+        _emergencyContact = _userProfile!['emergency_contact'];
+        _emergencyPhone = _userProfile!['emergency_phone'];
+
+        if (_userRole == 'student' && _studentProfile != null) {
+          _studentId = _studentProfile!['student_id'] ?? '';
+          _roomNumber = _studentProfile!['room_number'] ?? 'Not Assigned';
+          _housingStatus = _studentProfile!['housing_status'] ?? 'Pending';
+          _outstandingBalance =
+              (_studentProfile!['outstanding_balance'] as num?)?.toDouble() ??
+                  0.0;
+          _checkInDate = _studentProfile!['check_in_date'] != null
+              ? DateTime.parse(_studentProfile!['check_in_date'])
+              : DateTime.now();
+        }
       }
     } catch (e) {
       _error = 'Failed to load user profile: ${e.toString()}';
@@ -171,29 +210,6 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
-  // Get student information
-  String get studentName {
-    if (_userProfile == null) return '';
-    return '${_userProfile!['first_name']} ${_userProfile!['last_name']}';
-  }
-
-  String get studentId {
-    if (_studentProfile == null) return '';
-    return _studentProfile!['student_id'] ?? '';
-  }
-
-  String get roomNumber {
-    if (_studentProfile == null || _studentProfile!['housing_unit'] == null)
-      return '';
-    final housing = _studentProfile!['housing_unit'];
-    return '${housing['building_name']} ${housing['room_number']}';
-  }
-
-  double get outstandingBalance {
-    if (_studentProfile == null) return 0.0;
-    return (_studentProfile!['outstanding_balance'] as num?)?.toDouble() ?? 0.0;
-  }
-
   // Clear error
   void clearError() {
     _error = null;
@@ -202,46 +218,44 @@ class AuthProvider extends ChangeNotifier {
 
   // Refresh user profile - useful for updating the profile after changes
   Future<void> refreshUserProfile() async {
-    try {
-      _isLoading = true;
-      _error = null;
-      notifyListeners();
-
+    if (_user != null) {
       await _loadUserProfile();
-      return;
-    } catch (e) {
-      _error = 'Failed to refresh profile: ${e.toString()}';
-      throw Exception(_error);
-    } finally {
-      _isLoading = false;
-      notifyListeners();
     }
   }
 
-  // Manual update of user role
-  Future<bool> updateUserRole(String role) async {
+  // Update user profile
+  Future<void> updateProfile({
+    required String firstName,
+    required String lastName,
+    String? phoneNumber,
+    String? emergencyContact,
+    String? emergencyPhone,
+  }) async {
     try {
-      _isLoading = true;
-      _error = null;
+      if (_user == null) throw Exception('User not authenticated');
+
+      await _supabaseService.updateUserProfile(
+        _user!.id,
+        {
+          'first_name': firstName,
+          'last_name': lastName,
+          'phone_number': phoneNumber,
+          'emergency_contact': emergencyContact,
+          'emergency_phone': emergencyPhone,
+        },
+      );
+
+      // Update local state
+      _firstName = firstName;
+      _lastName = lastName;
+      _phoneNumber = phoneNumber;
+      _emergencyContact = emergencyContact;
+      _emergencyPhone = emergencyPhone;
+
       notifyListeners();
-
-      if (_user == null) {
-        _error = 'No user logged in';
-        return false;
-      }
-
-      // Call supabase service to update role
-      await _supabaseService.updateUserRole(_user!.id, role);
-
-      // Refresh the profile
-      await _loadUserProfile();
-      return true;
     } catch (e) {
-      _error = 'Failed to update role: ${e.toString()}';
-      return false;
-    } finally {
-      _isLoading = false;
-      notifyListeners();
+      print('Error updating profile: $e');
+      throw Exception('Failed to update profile: $e');
     }
   }
 }

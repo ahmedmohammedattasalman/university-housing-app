@@ -4,6 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart' hide Provider;
 import 'package:google_fonts/google_fonts.dart';
 import 'package:universityhousing/screens/login_screen.dart';
 import 'package:universityhousing/screens/test_connection_screen.dart';
+import 'package:universityhousing/screens/profile_screen.dart';
 import 'package:universityhousing/providers/auth_provider.dart';
 import 'package:universityhousing/providers/theme_provider.dart';
 import 'package:universityhousing/constants/colors.dart';
@@ -61,6 +62,7 @@ class MyApp extends StatelessWidget {
       routes: {
         '/login': (context) => const LoginScreen(),
         '/test_connection': (context) => const TestConnectionScreen(),
+        '/profile': (context) => const ProfileScreen(),
       },
     );
   }

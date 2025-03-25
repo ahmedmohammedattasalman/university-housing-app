@@ -68,19 +68,28 @@ class SupabaseService {
     final user = supabase.auth.currentUser;
     if (user == null) return null;
 
-    final userData =
-        await supabase.from('users').select().eq('id', user.id).single();
+    return await getUserProfileById(user.id);
+  }
 
-    // Check if user role is missing and set a default
-    if (userData != null &&
-        (userData['user_role'] == null ||
-            userData['user_role'].toString().isEmpty)) {
-      await setDefaultUserRole(user.id);
-      // Fetch the updated profile after setting default role
-      return await supabase.from('users').select().eq('id', user.id).single();
+  Future<Map<String, dynamic>?> getUserProfileById(String userId) async {
+    try {
+      final userData =
+          await supabase.from('users').select().eq('id', userId).single();
+
+      // Check if user role is missing and set a default
+      if (userData != null &&
+          (userData['user_role'] == null ||
+              userData['user_role'].toString().isEmpty)) {
+        await setDefaultUserRole(userId);
+        // Fetch the updated profile after setting default role
+        return await supabase.from('users').select().eq('id', userId).single();
+      }
+
+      return userData;
+    } catch (e) {
+      print('Error fetching user profile: $e');
+      return null;
     }
-
-    return userData;
   }
 
   Future<Map<String, dynamic>?> getStudentProfile() async {
@@ -106,72 +115,63 @@ class SupabaseService {
 
   // Attendance methods
   Future<void> recordAttendance({
-    required String studentProfileId,
     required String attendanceType,
     String? location,
+    bool requestMeal = false,
     String? notes,
   }) async {
     final user = supabase.auth.currentUser;
     if (user == null) throw Exception('User not authenticated');
 
-    await supabase.rpc(
-      'record_attendance',
-      params: {
-        'p_student_id': studentProfileId,
-        'p_recorder_id': user.id,
-        'p_attendance_type': attendanceType,
-        'p_location': location,
-        'p_notes': notes,
-      },
-    );
-  }
-
-  // Vacation request methods
-  Future<void> submitVacationRequest({
-    required String studentProfileId,
-    required DateTime startDate,
-    required DateTime endDate,
-    required String reason,
-  }) async {
-    await supabase.from('vacation_requests').insert({
-      'student_id': studentProfileId,
-      'start_date': startDate.toIso8601String(),
-      'end_date': endDate.toIso8601String(),
-      'reason': reason,
-    });
-  }
-
-  Future<List<Map<String, dynamic>>> getVacationRequests() async {
-    final user = supabase.auth.currentUser;
-    if (user == null) throw Exception('User not authenticated');
-
-    final profileData = await supabase
+    // Get student profile id
+    final studentProfile = await supabase
         .from('student_profiles')
         .select('id')
         .eq('user_id', user.id)
         .single();
 
-    final studentProfileId = profileData['id'];
+    final studentProfileId = studentProfile['id'] as String? ?? '';
 
-    final data = await supabase
-        .from('vacation_requests')
-        .select()
-        .eq('student_id', studentProfileId);
+    await supabase.from('attendance_records').insert({
+      'student_id': user.id,
+      'student_profile_id': studentProfileId,
+      'timestamp': DateTime.now().toIso8601String(),
+      'attendance_type': attendanceType,
+      'location': location,
+      'recorded_by': user.id,
+      'is_meal_requested': requestMeal,
+      'notes': notes,
+    });
+  }
 
-    return List<Map<String, dynamic>>.from(data);
+  // Vacation request methods
+  Future<void> submitVacationRequest({
+    required DateTime startDate,
+    required DateTime endDate,
+    required String reason,
+  }) async {
+    return await createVacationRequest(
+      startDate: startDate,
+      endDate: endDate,
+      reason: reason,
+    );
+  }
+
+  Future<List<Map<String, dynamic>>> getVacationRequests({
+    String? status,
+  }) async {
+    return await getAllVacationRequests(status: status);
   }
 
   // Eviction request methods
   Future<void> submitEvictionRequest({
-    required String studentProfileId,
     required DateTime moveOutDate,
     required String reason,
   }) async {
-    await supabase.from('eviction_requests').insert({
-      'student_id': studentProfileId,
-      'requested_move_out_date': moveOutDate.toIso8601String(),
-      'reason': reason,
-    });
+    return await createEvictionRequest(
+      moveOutDate: moveOutDate,
+      reason: reason,
+    );
   }
 
   // Payment methods
@@ -199,24 +199,7 @@ class SupabaseService {
   }
 
   Future<List<Map<String, dynamic>>> getPaymentHistory() async {
-    final user = supabase.auth.currentUser;
-    if (user == null) throw Exception('User not authenticated');
-
-    final profileData = await supabase
-        .from('student_profiles')
-        .select('id')
-        .eq('user_id', user.id)
-        .single();
-
-    final studentProfileId = profileData['id'];
-
-    final data = await supabase
-        .from('payments')
-        .select()
-        .eq('student_id', studentProfileId)
-        .order('payment_date', ascending: false);
-
-    return List<Map<String, dynamic>>.from(data);
+    return await getAllPaymentHistory();
   }
 
   // Notifications methods
@@ -466,9 +449,9 @@ class SupabaseService {
     };
 
     if (isSuccessful) {
-      updateData['receipt_number'] = receiptNumber;
+      updateData['receipt_number'] = receiptNumber ?? '';
     } else {
-      updateData['notes'] = failureReason;
+      updateData['notes'] = failureReason ?? '';
     }
 
     final result = await supabase
@@ -508,7 +491,7 @@ class SupabaseService {
         .update({'outstanding_balance': newBalance}).eq('id', studentProfileId);
   }
 
-  Future<List<Map<String, dynamic>>> getPaymentHistory() async {
+  Future<List<Map<String, dynamic>>> getAllPaymentHistory() async {
     final user = supabase.auth.currentUser;
     if (user == null) throw Exception('User not authenticated');
 
@@ -543,34 +526,6 @@ class SupabaseService {
   }
 
   // Attendance tracking methods
-  Future<void> recordAttendance({
-    required String attendanceType,
-    String? location,
-    bool requestMeal = false,
-    String? notes,
-  }) async {
-    final user = supabase.auth.currentUser;
-    if (user == null) throw Exception('User not authenticated');
-
-    // Get student profile id
-    final studentProfile = await supabase
-        .from('student_profiles')
-        .select('id')
-        .eq('user_id', user.id)
-        .single();
-
-    await supabase.from('attendance_records').insert({
-      'student_id': user.id,
-      'student_profile_id': studentProfile['id'],
-      'timestamp': DateTime.now().toIso8601String(),
-      'attendance_type': attendanceType,
-      'location': location,
-      'recorded_by': user.id,
-      'is_meal_requested': requestMeal,
-      'notes': notes,
-    });
-  }
-
   Future<void> confirmMeal(String attendanceId) async {
     final user = supabase.auth.currentUser;
     if (user == null) throw Exception('User not authenticated');
@@ -637,7 +592,7 @@ class SupabaseService {
   }
 
   // Vacation request methods
-  Future<void> submitVacationRequest({
+  Future<void> createVacationRequest({
     required DateTime startDate,
     required DateTime endDate,
     required String reason,
@@ -663,7 +618,7 @@ class SupabaseService {
     });
   }
 
-  Future<List<Map<String, dynamic>>> getVacationRequests({
+  Future<List<Map<String, dynamic>>> getAllVacationRequests({
     String? status,
   }) async {
     final user = supabase.auth.currentUser;
@@ -754,7 +709,7 @@ class SupabaseService {
   }
 
   // Eviction request methods
-  Future<void> submitEvictionRequest({
+  Future<void> createEvictionRequest({
     required DateTime moveOutDate,
     required String reason,
   }) async {
@@ -891,10 +846,31 @@ class SupabaseService {
         .single();
 
     // Execute the eviction in a transaction using Supabase's rpc
-    await supabase.rpc('execute_eviction', {
+    await supabase.rpc('execute_eviction', params: {
       'p_request_id': requestId,
       'p_supervisor_id': user.id,
       'p_housing_unit_id': studentProfile['housing_unit_id'],
     });
+  }
+
+  Future<Map<String, dynamic>?> getUserProfile(String userId) async {
+    try {
+      final response =
+          await supabase.from('users').select().eq('id', userId).single();
+      return response;
+    } catch (e) {
+      print('Error fetching user profile: $e');
+      return null;
+    }
+  }
+
+  Future<void> updateUserProfile(
+      String userId, Map<String, dynamic> userData) async {
+    try {
+      await supabase.from('users').update(userData).eq('id', userId);
+    } catch (e) {
+      print('Error updating user profile: $e');
+      throw Exception('Failed to update user profile: $e');
+    }
   }
 }
