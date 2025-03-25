@@ -29,6 +29,7 @@ class _PaymentScreenState extends State<PaymentScreen>
   final _formKey = GlobalKey<FormState>();
   final _housingService = HousingService();
   bool _isLoading = false;
+  double _outstandingBalance = 0.0;
 
   // Payment info controllers
   final TextEditingController _cardNumberController = TextEditingController();
@@ -86,6 +87,10 @@ class _PaymentScreenState extends State<PaymentScreen>
     _tabController = TabController(length: 2, vsync: this);
     if (widget.amountDue != null) {
       _amountController.text = widget.amountDue!.toStringAsFixed(2);
+      _outstandingBalance = widget.amountDue!;
+    } else {
+      // In a real app, we would fetch the balance from the backend
+      _outstandingBalance = 450.0;
     }
 
     if (widget.paymentFor != null) {
@@ -175,12 +180,15 @@ class _PaymentScreenState extends State<PaymentScreen>
         throw Exception('You must be logged in to make a payment');
       }
 
-      final paymentId = await _housingService.initiatePayment(
-        studentId: authProvider.studentId,
+      // Generate a reference number for this payment
+      final referenceNumber = 'PAY-${DateTime.now().millisecondsSinceEpoch}';
+
+      await _housingService.initiatePayment(
         amount: amount,
         paymentMethod: _selectedPaymentMethod,
         paymentType: _selectedPaymentType,
-        studentProfileId: authProvider.studentProfileId,
+        referenceNumber: referenceNumber,
+        notes: 'Payment initiated from app',
       );
 
       // In a real app, you would integrate with a payment gateway here
@@ -189,9 +197,15 @@ class _PaymentScreenState extends State<PaymentScreen>
 
       // Complete the payment (mark as successful)
       await _housingService.completePayment(
-        paymentId: paymentId,
+        paymentId: referenceNumber,
         isSuccessful: true,
       );
+
+      // Update the local balance
+      setState(() {
+        _outstandingBalance = _outstandingBalance - amount;
+        if (_outstandingBalance < 0) _outstandingBalance = 0;
+      });
 
       if (mounted) {
         Fluttertoast.showToast(
@@ -264,7 +278,7 @@ class _PaymentScreenState extends State<PaymentScreen>
                               children: [
                                 const Text('Student: '),
                                 Text(
-                                  authProvider.studentName,
+                                  '${authProvider.user?.userMetadata?['first_name'] ?? ''} ${authProvider.user?.userMetadata?['last_name'] ?? ''}',
                                   style: const TextStyle(
                                       fontWeight: FontWeight.bold),
                                 ),
@@ -276,7 +290,7 @@ class _PaymentScreenState extends State<PaymentScreen>
                               children: [
                                 const Text('Student ID: '),
                                 Text(
-                                  authProvider.studentId,
+                                  authProvider.user?.id ?? 'Unknown',
                                   style: const TextStyle(
                                       fontWeight: FontWeight.bold),
                                 ),
@@ -290,11 +304,10 @@ class _PaymentScreenState extends State<PaymentScreen>
                               children: [
                                 const Text('Outstanding Balance: '),
                                 Text(
-                                  currencyFormat
-                                      .format(authProvider.outstandingBalance),
+                                  currencyFormat.format(_outstandingBalance),
                                   style: TextStyle(
                                     fontWeight: FontWeight.bold,
-                                    color: authProvider.outstandingBalance > 0
+                                    color: _outstandingBalance > 0
                                         ? Colors.red
                                         : Colors.green,
                                   ),
