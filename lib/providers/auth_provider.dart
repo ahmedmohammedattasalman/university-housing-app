@@ -315,6 +315,7 @@ class AuthProvider extends ChangeNotifier {
                       'student_id': 'S12345',
                       'enrollment_date': DateTime.now().toIso8601String(),
                       'academic_year': '2023',
+                      'program': 'Computer Science',
                       'outstanding_balance': 0.0,
                       'check_in_date': DateTime.now().toIso8601String(),
                     });
@@ -363,6 +364,7 @@ class AuthProvider extends ChangeNotifier {
       }
 
       // Normal flow for non-test accounts
+      print('Starting regular login process for email: $email');
       final response = await _supabaseService.signIn(
         email: email,
         password: password,
@@ -371,27 +373,111 @@ class AuthProvider extends ChangeNotifier {
       _user = response.user;
 
       if (_user != null) {
+        print('User authenticated successfully, loading profile');
         await _loadUserProfile();
 
-        // Verify user role if provided
+        // Always ensure user has permissions - this is critical
+        bool permissionsLoaded = await _ensureUserPermissions();
+        if (!permissionsLoaded) {
+          print('WARNING: Could not load or create user permissions');
+          // We will continue login but with potentially limited access
+        }
+
+        // Check user role if specified at login
         if (userRole != null && _userProfile != null) {
           final actualRole = _userProfile!['user_role'];
-          if (actualRole != userRole) {
-            _error = 'Access denied. You do not have access as a $userRole.';
+          print('Actual role: $actualRole, Selected role at login: $userRole');
+
+          // More flexible approach based on permissions rather than just role titles
+          // Check based on specific permission requirements for each role type
+          if (userRole == 'admin' && !isAdmin && !hasPermission('is_admin')) {
+            _error = 'Access denied. You do not have administrator privileges.';
+            await signOut();
+            return false;
+          } else if (userRole == 'supervisor' &&
+              !isSupervisor &&
+              !isAdmin &&
+              !hasPermission('can_manage_maintenance')) {
+            _error = 'Access denied. You do not have supervisor privileges.';
+            await signOut();
+            return false;
+          } else if (userRole == 'labor' &&
+              !isLabor &&
+              !isSupervisor &&
+              !isAdmin &&
+              !hasPermission('can_perform_maintenance')) {
+            _error = 'Access denied. You do not have labor staff privileges.';
             await signOut();
             return false;
           }
+
+          // For student role access, we're more permissive - anyone can access student features
+        }
+
+        // Check if user is active
+        if (_userProfile != null && _userProfile!['is_active'] == false) {
+          _error =
+              'Your account has been deactivated. Please contact the administrator.';
+          await signOut();
+          return false;
         }
 
         return true;
+      } else {
+        _error = 'Invalid email or password.';
+        return false;
       }
-      return false;
     } catch (e) {
       _error = 'Sign in failed: ${e.toString()}';
       return false;
     } finally {
       _isLoading = false;
       notifyListeners();
+    }
+  }
+
+  // Helper method to ensure user has permissions
+  Future<bool> _ensureUserPermissions() async {
+    if (_user == null || _userProfile == null) {
+      return false;
+    }
+
+    try {
+      print('Ensuring user has permissions: ${_user!.id}');
+
+      // First try loading permissions
+      await _loadUserPermissions();
+
+      // If still no permissions, try to create them
+      if (_userPermissions == null || _userPermissions!.isEmpty) {
+        print(
+            'No permissions found, creating permissions for role: $_userRole');
+
+        try {
+          // Create permissions based on user's role
+          await _supabaseService.setupRoleBasedAccess(_user!.id, _userRole);
+
+          // Try loading permissions again
+          await _loadUserPermissions();
+
+          // Check if we succeeded
+          if (_userPermissions != null && _userPermissions!.isNotEmpty) {
+            print('Successfully created permissions during login');
+            return true;
+          } else {
+            print('Failed to create permissions during login');
+            return false;
+          }
+        } catch (e) {
+          print('Error creating permissions: $e');
+          return false;
+        }
+      }
+
+      return true; // Permissions were already loaded
+    } catch (e) {
+      print('Error in _ensureUserPermissions: $e');
+      return false;
     }
   }
 

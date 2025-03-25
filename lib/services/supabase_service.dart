@@ -20,59 +20,63 @@ class SupabaseService {
     String? phoneNumber,
     String? studentId,
   }) async {
-    // First create the auth user
-    final authResponse = await supabase.auth.signUp(
-      email: email,
-      password: password,
-    );
+    AuthResponse authResponse;
 
-    if (authResponse.user != null) {
-      try {
-        // Insert the user data into the users table
-        await supabase.from('users').insert({
-          'id': authResponse.user!.id,
-          'email': email,
-          'user_role': userRole,
-          'first_name': firstName,
-          'last_name': lastName,
-          'phone_number': phoneNumber,
-          'is_active': true,
-        });
+    try {
+      // First create the auth user
+      authResponse = await supabase.auth.signUp(
+        email: email,
+        password: password,
+      );
 
-        print('User record created successfully');
-
-        // If user is a student, create student profile
-        if (userRole == 'student' && studentId != null) {
-          try {
-            await supabase.from('student_profiles').insert({
-              'user_id': authResponse.user!.id,
-              'student_id': studentId,
-              'enrollment_date': DateTime.now().toIso8601String(),
-              'academic_year': DateTime.now().year.toString(),
-              'outstanding_balance': 0.0,
-              'check_in_date': DateTime.now().toIso8601String(),
-            });
-            print('Student profile created successfully');
-          } catch (e) {
-            // Log the error but don't fail registration
-            print('Failed to create student profile: $e');
-          }
-        }
-
-        // Create role-specific permissions using direct SQL to bypass RLS
+      if (authResponse.user != null) {
         try {
-          // Use a more direct approach to avoid any recursion issues
-          await _createUserPermissionsBasedOnRole(
-              authResponse.user!.id, userRole);
-          print('User permissions created successfully');
+          print(
+              'Creating user profile for ${authResponse.user!.id} with role: $userRole');
+
+          // Insert the user data into the users table
+          await supabase.from('users').insert({
+            'id': authResponse.user!.id,
+            'email': email,
+            'user_role': userRole,
+            'first_name': firstName,
+            'last_name': lastName,
+            'phone_number': phoneNumber,
+            'is_active': true,
+          });
+
+          print('User record created successfully');
+
+          // If user is a student, create student profile
+          if (userRole == 'student' && studentId != null) {
+            try {
+              await supabase.from('student_profiles').insert({
+                'user_id': authResponse.user!.id,
+                'student_id': studentId,
+                'enrollment_date': DateTime.now().toIso8601String(),
+                'academic_year': DateTime.now().year.toString(),
+                'outstanding_balance': 0.0,
+                'check_in_date': DateTime.now().toIso8601String(),
+                'program':
+                    'General Studies', // Add a default program since this is required
+              });
+              print('Student profile created successfully');
+            } catch (e) {
+              // Log the error but don't fail registration
+              print('Failed to create student profile: $e');
+            }
+          }
+
+          // Set up role-based permissions - Try multiple approaches in case one fails
+          await _setupPermissionsWithRetry(authResponse.user!.id, userRole);
         } catch (e) {
-          print('Error setting up permissions: $e');
-          // Continue with registration even if permissions setup fails
+          print('Error during user registration: $e');
+          // Continue to return the authResponse so the user can still log in
         }
-      } catch (e) {
-        print('Error during user registration: $e');
-        // Return the auth response anyway, so user can log in
       }
+    } catch (e) {
+      print('Error in signUp process: $e');
+      rethrow; // Re-throw to let the caller handle the error
     }
 
     return authResponse;
@@ -392,58 +396,55 @@ class SupabaseService {
 
       // If updating to student role, check if student profile exists
       if (role == 'student') {
-        final studentProfile = await supabase
-            .from('student_profiles')
-            .select('id')
-            .eq('user_id', userId);
-
-        // If no student profile exists, create one
-        if (studentProfile == null || studentProfile.isEmpty) {
-          print('No student profile found, creating one for user ID: $userId');
-          try {
-            await supabase.from('student_profiles').insert({
-              'user_id': userId,
-              'enrollment_date': DateTime.now().toIso8601String(),
-              'academic_year': DateTime.now().year.toString(),
-              'outstanding_balance': 0.0,
-            });
-            print('Student profile created successfully');
-          } catch (profileError) {
-            print('Error creating student profile: $profileError');
-            // Don't throw here to avoid breaking the flow if just the profile creation fails
-          }
-        }
+        await _ensureStudentProfileExists(userId);
       }
 
-      // Update role-based permissions
-      await _updateRolePermissions(userId, role);
+      // Update permissions using our retry method
+      await _setupPermissionsWithRetry(userId, role);
+
+      print('Role update completed with appropriate permissions');
     } catch (e) {
       print('Error updating user role: $e');
       throw Exception('Failed to update user role: $e');
     }
   }
 
-  // Update user permissions when role changes
-  Future<void> _updateRolePermissions(String userId, String role) async {
+  // Helper to ensure student profile exists
+  Future<void> _ensureStudentProfileExists(String userId) async {
     try {
-      print('Updating permissions for user ID: $userId with new role: $role');
+      final studentProfile = await supabase
+          .from('student_profiles')
+          .select('id')
+          .eq('user_id', userId);
 
-      // Use the database function directly to handle everything in one call
-      try {
-        await supabase.rpc('create_user_permissions',
-            params: {'p_user_id': userId, 'p_role': role});
-        print(
-            'Successfully updated permissions for user with role: $role using database function');
-        return;
-      } catch (rpcError) {
-        print(
-            'Error using RPC function: $rpcError - falling back to regular method');
-        // Fall back to regular method if RPC fails
-        await _createUserPermissionsBasedOnRole(userId, role);
+      // If no student profile exists, create one
+      if (studentProfile == null || studentProfile.isEmpty) {
+        print('No student profile found, creating one for user ID: $userId');
+
+        // Generate a unique student ID
+        final studentId = 'S${DateTime.now().millisecondsSinceEpoch}';
+
+        try {
+          await supabase.from('student_profiles').insert({
+            'user_id': userId,
+            'student_id': studentId,
+            'enrollment_date': DateTime.now().toIso8601String(),
+            'academic_year': DateTime.now().year.toString(),
+            'program': 'General Studies', // Default program
+            'outstanding_balance': 0.0,
+            'check_in_date': DateTime.now().toIso8601String(),
+          });
+          print('Student profile created successfully');
+        } catch (profileError) {
+          print('Error creating student profile: $profileError');
+          // Don't throw here to avoid breaking the flow if just the profile creation fails
+        }
+      } else {
+        print('Student profile already exists');
       }
     } catch (e) {
-      print('Error updating role permissions: $e');
-      // Don't throw to avoid breaking role update flow
+      print('Error checking student profile: $e');
+      // Don't throw to continue with role update
     }
   }
 
@@ -1157,6 +1158,50 @@ class SupabaseService {
     } catch (e) {
       print('Error in _createUserPermissionsBasedOnRole: $e');
       // Don't throw to avoid breaking registration flow
+    }
+  }
+
+  // Helper method to set up permissions with multiple retry approaches
+  Future<void> _setupPermissionsWithRetry(String userId, String role) async {
+    print('Setting up permissions for user: $userId with role: $role');
+
+    // First attempt: Try using the database function (most reliable)
+    try {
+      print('Attempt 1: Using database function to set permissions');
+      await supabase.rpc('create_user_permissions',
+          params: {'p_user_id': userId, 'p_role': role});
+      print('Successfully set up permissions using database function');
+      return; // Success, exit early
+    } catch (e) {
+      print('Error using database function: $e');
+      // Continue to next approach
+    }
+
+    // Second attempt: Try direct insert with appropriate role permissions
+    try {
+      print('Attempt 2: Using direct insert to set permissions');
+      await _createUserPermissionsBasedOnRole(userId, role);
+      print('Successfully set up permissions using direct insert');
+      return; // Success, exit early
+    } catch (e) {
+      print('Error using direct insert: $e');
+      // Continue to next approach
+    }
+
+    // Third attempt: Try most basic approach
+    try {
+      print('Attempt 3: Using basic permission insert');
+      // Create basic permissions that should work for any role
+      await supabase.from('user_permissions').insert({
+        'user_id': userId,
+        'can_view_announcements': true,
+        'can_view_housing': true,
+        'is_admin': role == 'admin' ? true : false,
+      });
+      print('Successfully created basic permissions');
+    } catch (e) {
+      print('Failed to create even basic permissions: $e');
+      // Log but don't throw - we want registration to succeed even if permissions fail
     }
   }
 }
